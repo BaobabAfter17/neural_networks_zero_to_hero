@@ -56,6 +56,24 @@ a bigram baseline to the full model.
   **LayerNorm**, plus **dropout** — scaled up (`n_embd=384`, 6 heads, 6 layers, `block_size=256`)
   to generate Shakespeare-like text.
 
+### `token/` — building a BPE tokenizer (minBPE)
+- **`dev.ipynb`** — The byte-pair encoding algorithm from first principles: counting adjacent
+  byte-pair frequencies, iteratively merging the most common pair into a new token, and building
+  up the `encode`/`decode` machinery on top of the learned merges.
+
+### `nanogpt/` — reproducing GPT-2 (124M) *(in progress)*
+Following the *Let's reproduce GPT-2* lecture, rebuilding the GPT-2 architecture in raw PyTorch
+and loading the real OpenAI weights to validate it.
+
+- **`train_gpt2.py`** — The GPT-2 `nn.Module` from scratch: `CausalSelfAttention` (batched
+  multi-head attention via a single fused `c_attn` projection), the `MLP`/feed-forward block with
+  `tanh`-approximate GELU, pre-norm `Block`s, and the full `GPT` model (token + position
+  embeddings, stacked blocks, final LayerNorm, LM head). `from_pretrained` loads the HuggingFace
+  `GPT2LMHeadModel` checkpoint into this module, transposing the `Conv1D`-style weights
+  (`c_attn`, `c_proj`, `c_fc`) to match `nn.Linear`'s convention. Currently wiring up the forward
+  pass to produce logits from the loaded weights.
+- **`play.ipynb`** — Scratch notebook for exploring the GPT-2 (124M) checkpoint.
+
 ## Key concepts
 
 Reverse-mode autodiff · computational graphs · analytical vs. numerical gradients ·
@@ -65,7 +83,8 @@ broadcasting & matrix shapes · regularization as smoothing · character embeddi
 language model · weight initialization · BatchNorm · activation/gradient diagnostics ·
 manual backprop through a full network · hierarchical/WaveNet-style models · self-attention &
 scaled dot-product attention · multi-head attention · Transformer blocks · residual connections ·
-LayerNorm · dropout · decoder-only GPT language model.
+LayerNorm · dropout · decoder-only GPT language model · byte-pair encoding (BPE) tokenization ·
+loading pretrained HuggingFace weights into a from-scratch module · GPT-2 architecture reproduction.
 
 ## Running it
 
@@ -86,7 +105,8 @@ jupyter notebook                   # open any .ipynb and run top-to-bottom
 - [x] **makemore (backprop)** — manual backprop through the whole net
 - [x] **makemore (WaveNet)** — hierarchical model with `FlattenConsecutive`
 - [x] **Building GPT** — self-attention and the Transformer from scratch
-- [ ] **Tokenization (minBPE)** & **GPT-2**
+- [x] **Tokenization (minBPE)** — byte-pair encoding from scratch
+- [ ] **Reproducing GPT-2 (nanoGPT)** — architecture in progress, loading pretrained weights
 
 ---
 
