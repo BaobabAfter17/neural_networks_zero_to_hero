@@ -21,25 +21,25 @@ class CausalSelfAttention(nn.Module):
         self.register_buffer('bias', torch.tril(torch.ones(config.block_size, config.block_size))
                                      .view(1, 1, config.block_size, config.block_size))
 
-def forward(self, x):
-    B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)    
-    # calculate query, key, values for all heads in batch and move head forward to be the batch
-    # nh is the "number of heads", hs is the "head size", and C (number of channels) = nh * hs
-    # e.g. in GPT-2(124M), n_head = 12, hs = 64, so nh * hs = C = 768 channels in the Transformer
-    qkv = self.c_attn(x)
-    q, k, v = qkv.split(self.n_embd, dim=2)
-    k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-    q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-    v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
-    # attention (materializes the large (T, T) matrix for all the queries and keys)
-    att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
-    att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
-    att = F.softmax(att, dim=-1)
-    y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
-    y = y.transpose(1, 2).contiguous().view(B, T, C)    # re-assemble all the head outputs side by side
-    # output projection
-    y = self.c_proj(y)
-    return y
+    def forward(self, x):
+        B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)    
+        # calculate query, key, values for all heads in batch and move head forward to be the batch
+        # nh is the "number of heads", hs is the "head size", and C (number of channels) = nh * hs
+        # e.g. in GPT-2(124M), n_head = 12, hs = 64, so nh * hs = C = 768 channels in the Transformer
+        qkv = self.c_attn(x)
+        q, k, v = qkv.split(self.n_embd, dim=2)
+        k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
+        # attention (materializes the large (T, T) matrix for all the queries and keys)
+        att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+        att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
+        att = F.softmax(att, dim=-1)
+        y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+        y = y.transpose(1, 2).contiguous().view(B, T, C)    # re-assemble all the head outputs side by side
+        # output projection
+        y = self.c_proj(y)
+        return y
 
 class MLP(nn.Module):
 
@@ -152,9 +152,6 @@ class GPT(nn.Module):
         # this means that we have to transpose these weights when we import them
         assert len(sd_keys_hf) == len(sd_keys), f"mismatched keys: {len(sd_keys_hf)} != {len(sd_keys)}"
         for k in sd_keys_hf:
-            print(k)
-            print(sd[k].shape)
-            print(sd_hf[k].shape)
             if any(k.endswith(w) for w in transposed):
                 # special treatment for the Conv1D weights we need to transpose
                 assert sd_hf[k].shape[::-1] == sd[k].shape
@@ -169,5 +166,47 @@ class GPT(nn.Module):
         return model
 
 # -------------------------------------------------
-mdoel = GPT.from_pretrained('gpt2')
+num_return_sequences = 5
+max_length = 30
+
+model = GPT.from_pretrained('gpt2')
 print("load sucuccess!")
+model.eval()
+# model.to('cuda')
+
+# prefix tokens
+import tiktoken
+enc = tiktoken.get_encoding('gpt2')
+tokens = enc.encode("Hello, I'm a language model,")
+tokens = torch.tensor(tokens, dtype=torch.long) # (8,)
+tokens = tokens.unsqueeze(0).repeat(num_return_sequences, 1)    # (5, 8)
+# x = tokens.to('cuda')
+x = tokens
+
+# generate! right now is (B, T) where B = 5, T = 8
+# set the seed to 42
+torch.manual_seed(42)
+# torch.cuda.manual_seed(42)
+while x.size(1) < max_length:
+    # forward the model to get the logits
+    with torch.no_grad():
+        logits = model(x)   # (B, T, vocab_size)
+        # take the logits at the last position
+        logits = logits[:, -1, :]   # (B, vocab_size)
+        # get the probabilities
+        probs = F.softmax(logits, dim=-1)
+        # do top-k sampling of 50 (huggingface pipeline default)
+        # topk_probs here becomes (5, 50), topk_indices is (5, 50)
+        topk_probs, topk_indices = torch.topk(probs, 50, dim=-1)
+        # select a token from the top-k probabilities
+        ix = torch.multinomial(topk_probs, 1)   # (B, 1)
+        # gather the corresponding indices
+        xcol = torch.gather(topk_indices, -1, ix)   # (B, 1)
+        # append to the sequence
+        x = torch.cat((x, xcol), dim=1)
+
+# print the generated text
+for i in range(num_return_sequences):
+    tokens = x[i, :max_length].tolist()
+    decoded = enc.decode(tokens)
+    print(">", decoded)
