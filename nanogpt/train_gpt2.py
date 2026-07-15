@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import math
+import tiktoken
 
 # ----------------------------------------------
 class CausalSelfAttention(nn.Module):
@@ -169,13 +170,12 @@ class GPT(nn.Module):
 num_return_sequences = 5
 max_length = 30
 
-model = GPT.from_pretrained('gpt2')
-print("load sucuccess!")
+# model = GPT.from_pretrained('gpt2')
+model = GPT(GPTConfig())
 model.eval()
 # model.to('cuda')
 
 # prefix tokens
-import tiktoken
 enc = tiktoken.get_encoding('gpt2')
 tokens = enc.encode("Hello, I'm a language model,")
 tokens = torch.tensor(tokens, dtype=torch.long) # (8,)
