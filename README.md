@@ -10,7 +10,7 @@ and solve the exercises. The goal is a first-principles understanding of how neu
 
 ## What's inside
 
-### `micrograd/` — a tiny autograd engine
+### `src/micrograd/` — a tiny autograd engine
 - **`micrograd.ipynb`** — A `Value` class that builds a computational graph during the forward
   pass, with **reverse-mode backprop** via topological sort and correct gradient *accumulation*
   (a bug I hit and fixed — see commit history). Built up into a `Neuron → Layer → MLP` and a full
@@ -19,7 +19,7 @@ and solve the exercises. The goal is a first-principles understanding of how neu
   extending `Value` with **softmax + negative log-likelihood** (`exp`/`log`/`div` from scratch),
   every gradient **verified against `torch`**.
 
-### `makemore/` — a character-level language model
+### `src/makemore/` — a character-level language model
 Built up over five parts, each with worked exercises (`exNN.ipynb`):
 
 - **`part1_bigram/`** — The *same* bigram model built two ways:
@@ -36,15 +36,15 @@ Built up over five parts, each with worked exercises (`exNN.ipynb`):
   preceding `Linear` at inference and connect the `Linear` gradients to Nielsen's BP1–BP4.
 - **`part4_backprop/`** — **Manual backpropagation** through the entire MLP — every intermediate
   gradient (cross-entropy, BatchNorm, matmuls, the embedding lookup) derived by hand and
-  **cross-checked against PyTorch autograd**. `dhprebn_derivation.md` works out the one-shot
+  **cross-checked against PyTorch autograd**. `doc/dhprebn_derivation.md` works out the one-shot
   BatchNorm gradient (the math behind Exercise 2).
 - **`part5_WavNet/`** — A hierarchical, **WaveNet**-style model that fuses characters in stages
   via a custom `FlattenConsecutive` layer, built on a reusable PyTorch-like module API
   (`Linear`, `BatchNorm1d`, `Tanh`, `Embedding`, `Sequential`) — making the network *deeper* and
   *tree-structured* rather than wider.
 
-### `gpt/` — building a GPT from scratch
-A decoder-only **Transformer** trained on the Tiny Shakespeare corpus (`input.txt`), built up from
+### `src/gpt/` — building a GPT from scratch
+A decoder-only **Transformer** trained on the Tiny Shakespeare corpus (`data/input.txt`), built up from
 a bigram baseline to the full model.
 
 - **`gpt-dev.ipynb`** — The working notebook: develops the **self-attention** mechanism from first
@@ -56,12 +56,12 @@ a bigram baseline to the full model.
   **LayerNorm**, plus **dropout** — scaled up (`n_embd=384`, 6 heads, 6 layers, `block_size=256`)
   to generate Shakespeare-like text.
 
-### `token/` — building a BPE tokenizer (minBPE)
+### `src/token/` — building a BPE tokenizer (minBPE)
 - **`dev.ipynb`** — The byte-pair encoding algorithm from first principles: counting adjacent
   byte-pair frequencies, iteratively merging the most common pair into a new token, and building
   up the `encode`/`decode` machinery on top of the learned merges.
 
-### `nanogpt/` — reproducing GPT-2 (124M) *(in progress)*
+### `src/nanogpt/` — reproducing GPT-2 (124M) *(in progress)*
 Following the *Let's reproduce GPT-2* lecture, rebuilding the GPT-2 architecture in raw PyTorch
 and loading the real OpenAI weights to validate it.
 
